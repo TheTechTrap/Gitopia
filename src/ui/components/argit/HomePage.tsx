@@ -4,6 +4,7 @@ import { connector } from "../../actionCreators/index"
 import { lifecycle } from "recompose"
 import { arweave } from "../../../index"
 import "./HomePage.css"
+import { Login } from "grommet-icons"
 
 import {
   Repository,
@@ -11,7 +12,9 @@ import {
   loadAddress,
   updateRepositories
 } from "../../reducers/argit"
-import { Button } from "@blueprintjs/core"
+// import { Button } from "@blueprintjs/core"
+import { Button, Box, Text } from "grommet"
+
 export const HomePage = connector(
   state => ({
     isAuthenticated: state.argit.isAuthenticated
@@ -30,12 +33,28 @@ export const HomePage = connector(
           </p>
           <p>
             <Button
-              className="bp3-outlined bp3-large bp3-minimal"
-              icon="log-in"
               onClick={() => props.openLoginModal({})}
+              icon={<Login />}
+              label="Logindlf"
             >
-              Login
+              <Box
+                round="xlarge"
+                background="accent-1"
+                pad={{ vertical: "small", horizontal: "medium" }}
+              >
+                <Text
+                  size="small"
+                  color="white"
+                  weight="bold"
+                  textAlign="center"
+                >
+                  Login
+                </Text>
+              </Box>
             </Button>
+            {/* className="bp3-outlined bp3-large bp3-minimal"
+            icon="log-in"
+            onClick={() => props.openLoginModal({})} */}
           </p>
         </div>
       </header>
