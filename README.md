@@ -1,15 +1,19 @@
-# d**git** - web
-[![DeepSource](https://static.deepsource.io/deepsource-badge-light-mini.svg)](https://deepsource.io/gh/TheTechTrap/dgit/?ref=repository-badge)
+# Gitopia
 
-[Permaweb link](https://arweave.net/H8h680dQsBnnY0EZFw72O-TPGuObdOzRHpXnAChc4pI)
-[dgit.sh](https://dgit.sh)
+[![DeepSource](https://static.deepsource.io/deepsource-badge-light-mini.svg)](https://deepsource.io/gh/TheTechTrap/dgit/?ref=repository-badge)
+[![Gitopia](https://img.shields.io/endpoint?style=&url=https://gitopia.org/mirror-badge.json)](https://gitopia.org/#/z_TqsbmVJOKzpuQH4YrYXv_Q0DrkwDwc0UqapRrE0Do/Gitopia)
 
 ## Steps to Install
-- `git clone https://github.com/TheTechTrap/dgit.git` 
-- `yarn install` 
+
+- `git clone https://github.com/gitopia/gitopia.git`
+- `yarn install`
 - `yarn watch`
 
 ## Credits
-We are thankful to the following open source projects for their prior work.
+
+We are thankful to the following projects for their prior work which inspired the implementation :
+
 - [next-editor](https://github.com/mizchi/next-editor)
 - [isomorphic-git](https://github.com/isomorphic-git/isomorphic-git)
+- [co-scribbler]()
+- [react-github-repo-view]()

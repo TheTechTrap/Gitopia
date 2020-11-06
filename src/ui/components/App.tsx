@@ -4,13 +4,10 @@ import { PersistGate } from "redux-persist/integration/react"
 import { configureStore } from "../store/configureStore"
 import { LandingNew } from "./argit/LandingNew"
 import { LoginModal } from "./argit/loginModal"
-import { CreateRepoModal } from "./organisms/CreateRepoModal"
 import { GlobalErrorBoundary } from "./utils/GlobalErrorBoundary"
 import { GlobalKeyHandler } from "./utils/GlobalKeyHandler"
 import { HashRouter, Switch, Route, Redirect } from "react-router-dom"
-import { StackRouter } from "./utils/StackRouter"
 import { Layout } from "./argit/Layout/Layout"
-import { Sponsor } from "./argit/Sponsor"
 export class App extends React.Component<{}> {
   render() {
     const { store, persistor } = configureStore()
@@ -35,7 +32,6 @@ export class App extends React.Component<{}> {
                 </Switch>
               </HashRouter>
               <LoginModal />
-              <CreateRepoModal />
             </GlobalKeyHandler>
           </PersistGate>
         </Provider>

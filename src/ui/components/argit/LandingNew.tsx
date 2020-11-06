@@ -80,16 +80,24 @@ export const LandingNew = connector(
                 <i className="fa fa-book" /> Documentation
               </a>
             </li> */}
-            <li className="landing-menu__item landing-toggle">
-              <a
-                href="#"
-                onClick={() => props.openLoginModal({})}
-                className="landing-a landing-link landing-link--dark"
-              >
-                <i className="fa fa-sign-in" /> Login
+
+
+            <li className="landing-menu__item">
+              <a href="https://thetechtrap.com/tags/gitopia" className="landing-link landing-link--dark">
+              <i className="fa fa-book" /> Blog
               </a>
             </li>
             <li className="landing-menu__item">
+              <a href="https://gitopia.org/#/z_TqsbmVJOKzpuQH4YrYXv_Q0DrkwDwc0UqapRrE0Do/Gitopia" className="landing-link landing-link--dark">
+              <img src={dlogo} height="30px" width="30px" /> Gitopia
+              </a>
+            </li>
+            <li className="landing-menu__item">
+              <a href="https://github.com/Gitopia" className="landing-link landing-link--dark">
+                <i className="fa fa-github" /> GitHub
+              </a>
+            </li>
+            <li className="landing-menu__item landing-toggle ">
               <a
                 href="#"
                 onClick={() => props.openLoginModal({})}
@@ -98,23 +106,48 @@ export const LandingNew = connector(
                 <i className="fa fa-sign-in" /> Login
               </a>
             </li>
+            <li className="landing-menu__item ">
+              <a
+                href="#"
+                onClick={() => props.openLoginModal({})}
+                className="landing-a landing-link landing-link--dark"
+              >
+                <i className="fa fa-sign-in" /> Login
+              </a>
+            </li>
+            {/* <li className="landing-menu__item">
+              <a
+                href="#"
+                onClick={() => props.openLoginModal({})}
+                className="landing-a landing-link landing-link--dark"
+              >
+                <i className="fa fa-sign-in" /> Login
+              </a>
+            </li> */}
           </ul>
         </nav>
         <div className="landing-hero">
           <h1 className="landing-hero__title">
-            <img width="150px" height="150px" src={logo} />
+            <img width="200px" height="200px" src={logo} />
           </h1>
-          <p className="landing-hero__description">
-            Permanent versioning for your Code
+          <p className="landing-hero__description">Decentralized 
+            <div className="slidingVertical">
+              <span>&nbsp;Collaboration</span>
+              <span>&nbsp;Communities</span>
+              <span>&nbsp;Source Code</span>
+            </div>
           </p>
+          {/* <p className="landing-hero__description">
+            Permanent versioning for your Code
+          </p> */}
         </div>
         <div className="landing-hero__terminal">
           <pre className="landing-pre" id="typewriter">
-            <span className="dgit-highlight">dgit ~ $</span> <span className="dgit-code" >git remote add
-          origin dgit://VC4NJ3nlVJJPgyJ4DScpeXx3-UnXmiasfrxiIFpJwb0/repo-name{"\n"}</span>
+            <span className="dgit-highlight">Gitopia ~ $</span> <span className="dgit-code" >git remote add
+          origin gitopia://wallet_address/repo-name{"\n"}</span>
 
 
-            <span className="dgit-highlight">dgit ~ $</span><span className="dgit-code" >git push origin
+            <span className="dgit-highlight">Gitopia ~ $</span><span className="dgit-code" >git push origin
             master</span>
           </pre>
           {/* <pre className="landing-pre">
@@ -144,7 +177,7 @@ export const LandingNew = connector(
               </ul> */}
               <pre className="landing-nohighlight landing-code">
                 <code className="landing-tab__pane active mac">
-                  $ npm install -g git-remote-dgit
+                  $ npm install -g @gitopia/git-remote-gitopia
                 </code>
                 {/* <code className="landing-tab__pane linux">
                 </code>
@@ -159,12 +192,10 @@ export const LandingNew = connector(
                 <img src={serverImage} height="100px" width="100px" />
               </div>
               <h3 className="landing-section__title justify-content-center">
-                Permanent
+                Persistent
               </h3>
               <p className="landing-p justify-content-center">
-                All your code is stored on the blockchain forever so anything
-                stored with dgit will never be lost, even when you accidently
-                force push
+                We let your code revisions stay on the blockweave permanently, while you keep on building.
               </p>
             </div>
             <div className="landing-feature__item">
@@ -172,12 +203,10 @@ export const LandingNew = connector(
                 <img src={availabilityImage} height="100px" width="100px" />
               </div>
               <h3 className="landing-section__title justify-content-center">
-                Available
+                Accessible
               </h3>
               <p className="landing-p justify-content-center">
-                All your code is mirrored across the distributed network of
-                blockchain nodes, so you don't need to rely on a centralized
-                server.
+                Never lose access to your code with Gitopia. All your code is mirrored across distributed network of Arweave nodes.
               </p>
             </div>
             <div className="landing-feature__item">
@@ -188,7 +217,7 @@ export const LandingNew = connector(
                 Secure
               </h3>
               <p className="landing-p justify-content-center">
-                The code can be updated only by the user holding the private
+                The code can only be updated by the user holding the private
                 keys
               </p>
             </div>
@@ -197,11 +226,10 @@ export const LandingNew = connector(
                 <img src={votingImage} height="100px" width="100px" />
               </div>
               <h3 className="landing-section__title justify-content-center">
-                Governance
+                Community-centric
               </h3>
               <p className="landing-p justify-content-center">
-                Dgit being a Profit Sharing Community, all governance/product
-                decisions need a voting on community.xyz
+                Gitopia is a Profit Sharing Community. In this model, governance is given to the community and everyone can vote on product decisions.
               </p>
             </div>
             <div className="landing-feature__item">
@@ -212,7 +240,7 @@ export const LandingNew = connector(
                 Open Source
               </h3>
               <p className="landing-p justify-content-center">
-                All of dgit code is open source on dgit and can be audited by
+                All of the Gitopia source code is open source and can be audited by
                 anyone.
               </p>
             </div>
@@ -221,12 +249,10 @@ export const LandingNew = connector(
                 <img src={pushImage} height="100px" width="100px" />
               </div>
               <h3 className="landing-section__title justify-content-center">
-                git CLI
+                Get, Set, Push
               </h3>
               <p className="landing-p justify-content-center">
-                dgit makes use of git-remote-dgit helper which enables
-                developers to work with the default git cli they are comfortable
-                with.
+                All you need is an Arweave wallet and our git remote helper to start pushing your code to Gitopia. You could also use our GitHub action to mirror your existing repos.
               </p>
             </div>
           </div>
@@ -270,25 +296,37 @@ export const LandingNew = connector(
               </li>
             </ul>*/}
           </div>
-          {/* <div className="landing-callout">
-            <p className="landing-p justify-content-center">Read our documentation for info</p>
-            <a href="doc.html" className="landing-a landing-button--primary">
-              Documentation
+          <hr/>
+          <div className="landing-callout">
+            <h4>Join us on Discord</h4>
+            <a href="https://discord.gg/mVpQVW3vKE"  className="landing-a">
+            <img src="https://img.shields.io/discord/746365205277179907?color=%235190FF&label=Gitopia&logo=discord&logoColor=white" />
             </a>
-          </div> */}
+       
+          </div>
         </div>
+
+        <div className="landing-keybinding">
+          <ul className="landing-keybinding__detail">
+            <h3 className="landing-keybinding__title">About Us</h3>
+            <p>What began as a decentralized solution essential for collaboration and data integrity, is now  becoming increasingly centralized and walled off. Centralized Source Code Management Applications hold the keys to our repositories and in turn have the ability, whether maliciously or inadvertently, to corrupt our code.
+            <br/><br/>With Gitopia, we have solved this problem by creating a decentralized Source Code Colloboration Platform. You now have the ability to store your code permanently on the blockchain in a decentralized and transparent manner. 
+            </p>
+          </ul>
+        </div>
+
         <div className="landing-changelog">
           <div className="landing-wrapper">
             <h3 className="landing-section__title">Changelog</h3>
             <div className="landing-changelog__item">
               <div className="landing-changelog__meta">
                 <h4 className="landing-changelog__title">v0.1.0</h4>
-                <small className="landing-changelog__date">10/13/2020</small>
+                <small className="landing-changelog__date">11/04/2020</small>
               </div>
               <div className="landing-changelog__detail">
                 <ul>
                   <li>
-                    Redesigned landing page
+                    All new landing page and branding
                   </li>
                   <li>Improved UI/UX of the frontend app</li>
                   <li>Git remote helper</li>
@@ -311,7 +349,7 @@ export const LandingNew = connector(
           &nbsp; by{" "}
           <span className="font-bold">
             <a
-              href="https://thechtrap.com/"
+              href="https://thetechtrap.com/"
               target="_blank"
               className="landing-a landing-link link--dark"
             >

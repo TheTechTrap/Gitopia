@@ -1,9 +1,10 @@
 import { format } from "date-fns"
 import fs from "fs"
 import * as git from "isomorphic-git"
-import { getOidByRef } from "isomorphic-git/src/utils/graphql"
+import * as pkg from "isomorphic-git/src/utils/arweave"
+const { getOidByRef } = pkg
 import { fetchGitObject } from "isomorphic-git/src/utils/arweave"
-import React from "react"
+import React, { lazy, Suspense } from "react"
 import { Link } from "react-router-dom"
 import { CardBody, Col, Row, Container } from "reactstrap"
 import { lifecycle } from "recompose"
@@ -18,7 +19,7 @@ import {
 } from "../../actionCreators/editorActions"
 import { Editor } from "../../components/argit/editor"
 import {
-  setTxLoading,
+  setPageLoading,
   setRepositoryURL,
   setRepositoryHead,
   updateRepository,
@@ -44,11 +45,10 @@ import {
   RepoInfo,
   IssueLabel
 } from "../argit/Repository/RepositoryStyles"
-import { GoArrowLeft, GoArrowRight } from "react-icons/go"
-import { FaHistory, FaRegFileAlt, FaAward, FaSpinner } from "react-icons/fa"
 import { mkdir } from "../../../domain/filesystem/commands/mkdir"
 import pify from "pify"
 import { existsPath } from "../../../domain/filesystem/queries/existsPath"
+import { loadFile } from "../../actionCreators/editorActions"
 
 const getGitObjectPath = (projectRoot, oid) => {
   const dirpath = `${projectRoot}/.git/objects/${oid.slice(0, 2)}`
@@ -69,7 +69,9 @@ export const downloadGitObject = async (arweave, url, oid, projectRoot) => {
 
 const writeGitObject = async (projectRoot, oid, object) => {
   const { dirpath, filepath } = getGitObjectPath(projectRoot, oid)
-  await mkdir(dirpath)
+  try {
+    await mkdir(dirpath)
+  } catch (err) {}
   const buf = Buffer.from(object, "base64")
   await pify(fs.writeFile)(filepath, buf)
 }
@@ -161,12 +163,15 @@ type StackRouterProps = {
   deleteProject: typeof deleteProject
   projects: Project[]
   history: ReadCommitResult[]
-  txLoading: boolean
-  setTxLoading: typeof setTxLoading
+  pageLoading: boolean
+  setPageLoading: typeof setPageLoading
   updateRepository: typeof updateRepository
   setRepositoryURL: typeof setRepositoryURL
   setRepositoryHead: typeof setRepositoryHead
+  repositoryHead: string | null
   updatePage: typeof updatePage
+  currentRef: string
+  loadFile: typeof loadFile
 }
 
 // const selector = (state: RootState): Props => {
@@ -182,21 +187,24 @@ export const StackRouter = connector(
     projectRoot: state.project.projectRoot,
     address: state.argit.address,
     history: state.git.history,
-    txLoading: state.argit.txLoading,
+    pageLoading: state.argit.pageLoading,
     isAuthenticated: state.argit.isAuthenticated,
-    repository: state.argit.repository
+    repository: state.argit.repository,
+    repositoryHead: state.argit.repositoryHead,
+    currentRef: state.argit.currentRef
   }),
   actions => ({
     updateProjectList: actions.project.updateProjectList,
     startProjectRootChanged: actions.editor.startProjectRootChanged,
     createNewProject: actions.project.createNewProject,
     deleteProject: actions.editor.deleteProject,
-    setTxLoading: actions.argit.setTxLoading,
+    setPageLoading: actions.argit.setPageLoading,
     openSponsorModal: actions.argit.openSponsorModal,
     updateRepository: actions.argit.updateRepository,
     setRepositoryURL: actions.argit.setRepositoryURL,
     setRepositoryHead: actions.argit.setRepositoryHead,
-    updatePage: actions.argit.updatePage
+    updatePage: actions.argit.updatePage,
+    loadFile: actions.editor.loadFile
   }),
   lifecycle<StackRouterProps, {}>({
     async componentDidMount() {
@@ -204,17 +212,16 @@ export const StackRouter = connector(
       const {
         match,
         startProjectRootChanged,
-        address,
-        setTxLoading,
+        setPageLoading,
         setRepositoryURL,
         setRepositoryHead,
-        updateRepository
+        updateRepository,
+        loadFile,
+        currentRef
       } = this.props
       const newProjectRoot = `/${match.params.repo_name}`
-      const ref = match.params.ref || "master"
-      const path = match.params.path
 
-      setTxLoading({ loading: true })
+      setPageLoading({ loading: true })
       updateRepository({
         repository: {
           name: match.params.repo_name,
@@ -224,32 +231,93 @@ export const StackRouter = connector(
       })
       createNewProject({ newProjectRoot })
 
-      const url = `dgit://${match.params.wallet_address}${newProjectRoot}`
+      const url = `gitopia://${match.params.wallet_address}${newProjectRoot}`
 
       setRepositoryURL({ repositoryURL: url })
 
-      const oid = await getOidByRef(arweave, url, `refs/heads/${ref}`)
+      const { oid } = await getOidByRef(arweave, url, currentRef)
 
-      if (oid !== "0000000000000000000000000000000000000000" && oid !== "") {
+      if (oid) {
         setRepositoryHead({ repositoryHead: oid })
 
         await git.init({ fs, dir: newProjectRoot })
-
         await loadDirectory(arweave, url, oid, newProjectRoot, newProjectRoot)
+
+        const readmePath = `${newProjectRoot}/README.md`
+        if (existsPath(readmePath)) {
+          loadFile({ filepath: readmePath })
+        }
+      } else {
+        setRepositoryHead({ repositoryHead: null })
       }
 
       await startProjectRootChanged({
         projectRoot: newProjectRoot
       })
 
-      setTxLoading({ loading: false })
+      setPageLoading({ loading: false })
     },
-    componentWillUnmount() {
+    async componentDidUpdate(prevProps, prevState) {
+      if (
+        prevProps.currentRef !== this.props.currentRef &&
+        prevProps.match.params.repo_name === this.props.match.params.repo_name
+      ) {
+        const {
+          match,
+          startProjectRootChanged,
+          address,
+          setTxLoading,
+          setRepositoryURL,
+          setRepositoryHead,
+          updateRepository,
+          loadFile,
+          currentRef
+        } = this.props
+        setPageLoading({ loading: true })
+        this.props.updatePage({ page: "repo" })
+        const newProjectRoot = `/${match.params.repo_name}`
+        const path = match.params.path
+
+        updateRepository({
+          repository: {
+            name: match.params.repo_name,
+            owner: { name: match.params.wallet_address },
+            description: ""
+          }
+        })
+        createNewProject({ newProjectRoot })
+
+        const url = `gitopia://${match.params.wallet_address}${newProjectRoot}`
+
+        setRepositoryURL({ repositoryURL: url })
+
+        const { oid } = await getOidByRef(arweave, url, currentRef)
+
+        if (oid) {
+          setRepositoryHead({ repositoryHead: oid })
+
+          await git.init({ fs, dir: newProjectRoot })
+          await loadDirectory(arweave, url, oid, newProjectRoot, newProjectRoot)
+
+          const readmePath = `${newProjectRoot}/README.md`
+          if (existsPath(readmePath)) {
+            loadFile({ filepath: readmePath })
+          }
+        } else {
+          setRepositoryHead({ repositoryHead: null })
+        }
+
+        await startProjectRootChanged({
+          projectRoot: newProjectRoot
+        })
+
+        setPageLoading({ loading: false })
+      }
       // this.props.deleteProject({ dirpath: this.props.projectRoot })
     }
   })
 )(function StackRouterImpl(props) {
-  const { match } = props
+  const { match, repositoryHead } = props
 
   switch (props.currentScene) {
     case "main": {
@@ -274,47 +342,43 @@ export const StackRouter = connector(
         forks: 0
       }
 
-      if (props.txLoading)
+      if (props.pageLoading)
         return (
           <>
-            <Loading loading={props.txLoading ? 1 : 0}>
-              <FaSpinner />
+            <Loading loading={props.pageLoading ? 1 : 0}>
+              <i className="fa fa-spinner fa-spin" />
             </Loading>
           </>
         )
 
       return (
-        <>
-          {props.history.length === 1 ? (
-            <></>
-          ) : (
-            <div className="stack-top">
-              {/* <h2 className="mb-3">
+        <div className="stack-top">
+          {/* <h2 className="mb-3">
                 {props.match.params.wallet_address}/
                 {props.match.params.repo_name}
               </h2> */}
-              {/* <DgitScore /> */}
-              <Container>
-                <Row alignItems="center" flexCol>
-                  <Col xs="12">
-                    <div className="card-dgit">
-                      <CardBody>
-                        <RepositoryBrowser />
-                      </CardBody>
-                    </div>
-                  </Col>
-                </Row>
-                <Row>
-                  <Col>
-                    <div className="mt-4">
-                      <Editor {...props} />
-                    </div>
-                  </Col>
-                </Row>
-              </Container>
-            </div>
-          )}
-        </>
+          {/* <DgitScore /> */}
+          <Container>
+            {repositoryHead && (
+              <Row alignItems="center" flexCol>
+                <Col xs="12">
+                  <div className="card-dgit">
+                    <CardBody>
+                      <RepositoryBrowser />
+                    </CardBody>
+                  </div>
+                </Col>
+              </Row>
+            )}
+            <Row>
+              <Col>
+                <div className="mt-4">
+                  <Editor {...props} />
+                </div>
+              </Col>
+            </Row>
+          </Container>
+        </div>
       )
     }
 

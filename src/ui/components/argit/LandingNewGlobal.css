@@ -113,7 +113,7 @@
 /* buttons */
 .landing-button--primary {
   padding: 10px 22px;
-  background-color: var(--landing-accent-color);
+  background-color: #5190ff;
   color: white;
   position: relative;
   text-decoration: none;
@@ -301,7 +301,7 @@
 
 .landing-footer {
   text-align: center;
-  background-color: var(--landing-primary-color);
+  background-color: #3f51b5;
   padding: 2rem;
   color: white;
 }

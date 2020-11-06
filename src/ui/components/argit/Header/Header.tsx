@@ -13,7 +13,10 @@ import {
 import {
   loadNotifications,
   setIsAuthenticated,
-  updateRepositories
+  updateRepositories,
+  setWallet,
+  userLogout,
+  setLastSynced
 } from "../../../reducers/argit"
 import {
   changeSidebarPosition,
@@ -31,6 +34,10 @@ type HeaderProps = {
   loadNotifications: typeof loadNotifications
   notifications: typeof Notification[]
   address: string
+  setWallet: typeof setWallet
+  userLogout: typeof userLogout
+  lastSynced: number
+  setLastSynced: typeof setLastSynced
 }
 
 type HeaderState = {
@@ -133,9 +140,9 @@ class Header extends React.Component<HeaderProps, HeaderState> {
                 } rounded-circle thumb-sm float-left mr-2`}
               >
                 <img
-                  src={`https://api.adorable.io/avatars/100/${
+                  src={`https://avatars.dicebear.com/api/bottts/${
                     this.props.address
-                  }.png`}
+                  }.svg?h=30&r=5&m=2`}
                   alt="..."
                 />
               </span>
@@ -145,7 +152,8 @@ class Header extends React.Component<HeaderProps, HeaderState> {
                 </span>
                 <span className="d-none d-md-block">{this.props.address} </span>
               </span>
-              <Badge className={s.badge} color="primary">
+              <Badge className={s.badge}>
+                <i className="fa fa-bell" />
                 {this.props.notifications.length}
               </Badge>
             </DropdownToggle>
@@ -159,6 +167,8 @@ class Header extends React.Component<HeaderProps, HeaderState> {
                 notifications={this.props.notifications}
                 loadNotifications={this.props.loadNotifications}
                 address={this.props.address}
+                lastSynced={this.props.lastSynced}
+                setLastSynced={this.props.setLastSynced}
               />
             </DropdownMenu>
           </Dropdown>
@@ -168,16 +178,17 @@ class Header extends React.Component<HeaderProps, HeaderState> {
           <NavItem>
             <NavLink
               onClick={() => {
-                sessionStorage.removeItem("keyfile") // Remove keyfile from sessionStorage
+                this.props.setWallet({ wallet: "" })
                 this.props.setIsAuthenticated({ isAuthenticated: false })
                 this.props.updateRepositories({ repositories: [] })
+                this.props.userLogout({})
                 // window.location.reload()
                 this.props.history.replace("/")
               }}
               className={`${s.navItem} text-black`}
               href="#"
             >
-              <i className="glyphicon glyphicon-off" />
+              <i className="fa fa-sign-out" aria-hidden="true" />
             </NavLink>
           </NavItem>
         </Nav>

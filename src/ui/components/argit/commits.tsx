@@ -1,11 +1,11 @@
 import format from "date-fns/format"
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { connector } from "../../actionCreators/index"
 import { downloadGitObject } from "../utils/StackRouter"
 import { readObject } from "isomorphic-git"
 import fs from "fs"
 import { arweave } from "../../../index"
-import { getOidByRef } from "isomorphic-git/src/utils/graphql"
+import { getOidByRef } from "isomorphic-git/src/utils/arweave"
 import { createNewProject } from "../../reducers/project"
 import { updateCommits } from "../../reducers/git"
 import NewContainer, { Icon, List } from "../argit/Repository/Container"
@@ -18,8 +18,6 @@ import {
 } from "../argit/Repository/RepositoryStyles"
 import dlogo from "../argit/images/dlogo.svg"
 import { Link } from "react-router-dom"
-import { GoArrowLeft } from "react-icons/go"
-import { FaSpinner } from "react-icons/fa"
 import * as git from "isomorphic-git"
 
 function compareAge(a, b) {
@@ -58,6 +56,7 @@ type CommitsProps = {
   match: any
   createNewProject: typeof createNewProject
   updateCommits: typeof updateCommits
+  currentRef: string
 }
 
 let commitGen: AsyncGenerator<any, void, unknown> | null = null
@@ -66,14 +65,16 @@ const numCommitsPerPage = 15
 export const Commits = connector(
   state => ({
     currentBranch: state.git.currentBranch,
-    commits: state.git.commits
+    commits: state.git.commits,
+    currentRef: state.argit.currentRef
   }),
   actions => ({
     createNewProject: actions.project.createNewProject,
     updateCommits: actions.git.updateCommits
   })
 )(function CommitsImpl(props: CommitsProps) {
-  const { match, commits, createNewProject, updateCommits } = props
+  const { match, currentRef, commits, createNewProject, updateCommits } = props
+  const prevRef = usePrevious(currentRef)
   const [offset, setOffset] = useState(0)
   const [pageLoading, setPageLoading] = useState(true)
   const commitsToDisplay = commits.slice(offset, offset + numCommitsPerPage)
@@ -91,18 +92,17 @@ export const Commits = connector(
     () => {
       const componentDidMount = async () => {
         setPageLoading(true)
-        const url = `dgit://${match.params.wallet_address}/${
+        const url = `gitopia://${match.params.wallet_address}/${
           match.params.repo_name
         }`
-        const branch = match.params.branch || "master"
         const newProjectRoot = `/${match.params.repo_name}`
-        const ref = await getOidByRef(arweave, url, `refs/heads/${branch}`)
+        const { oid } = await getOidByRef(arweave, url, props.currentRef)
         const commits = []
 
         createNewProject({ newProjectRoot })
         await git.init({ fs, dir: newProjectRoot })
 
-        commitGen = await fetchCommits(arweave, url, ref, newProjectRoot)
+        commitGen = await fetchCommits(arweave, url, oid, newProjectRoot)
 
         for (let i = 0; i < numCommitsPerPage; i++) {
           const commit = await commitGen.next()
@@ -129,20 +129,21 @@ export const Commits = connector(
         setPageLoading(false)
       }
 
-      if (commits.length === 0) {
+      if (commits.length === 0 || currentRef !== prevRef) {
+        setOffset(0)
         componentDidMount()
       } else {
         componentDidUpdate()
       }
     },
-    [offset]
+    [offset, currentRef]
   )
 
   return (
     <>
       {pageLoading ? (
         <Loading loading={pageLoading ? 1 : 0}>
-          <FaSpinner />
+          <i className="fa fa-spinner fa-spin" />
         </Loading>
       ) : (
         <>
@@ -151,10 +152,10 @@ export const Commits = connector(
               <li key={commit.oid}>
                 <div>
                   <img
-                    src={`https://api.adorable.io/avatars/100/${
-                      commit.object.committer.email
-                    }.png`}
-                    alt={commit.object.committer.email}
+                    src={`https://avatars.dicebear.com/api/initials/${commit.object.committer.name.split(
+                      " "
+                    )[0] || ""}.svg`}
+                    alt={commit.object.committer.name}
                   />
                   <span>
                     {format(
@@ -198,3 +199,11 @@ export const Commits = connector(
     </>
   )
 })
+
+function usePrevious(value) {
+  const ref = useRef()
+  useEffect(() => {
+    ref.current = value
+  })
+  return ref.current
+}

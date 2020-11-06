@@ -3,17 +3,22 @@ import Dropzone from "react-dropzone"
 import { Button, Modal, ModalBody, ModalFooter, ModalHeader } from "reactstrap"
 import { connector } from "../../actionCreators/index"
 import { arweave } from "../../../index"
+import { userLogout, loadAddress } from "../../reducers/argit"
 
 export const LoginModal = connector(
   state => ({
     keyFileName: state.argit.keyFileName,
-    openedLoginModal: state.argit.openedLoginModal
+    openedLoginModal: state.argit.openedLoginModal,
+    wallet: state.argit.wallet
   }),
   actions => ({
     openLoginModal: actions.argit.openLoginModal,
     closeLoginModal: actions.argit.closeLoginModal,
     loadKeyFile: actions.argit.loadKeyFile,
-    setIsAuthenticated: actions.argit.setIsAuthenticated
+    setIsAuthenticated: actions.argit.setIsAuthenticated,
+    setWallet: actions.argit.setWallet,
+    userLogout: actions.argit.userLogout,
+    loadAddress: actions.argit.loadAddress
   })
 )(function LoginModalImpl(props) {
   return (
@@ -22,6 +27,7 @@ export const LoginModal = connector(
       <ModalBody>
         <Dropzone
           onDrop={async acceptedFiles => {
+            props.userLogout({})
             if (
               acceptedFiles[0].name
                 .split(".")
@@ -44,17 +50,21 @@ export const LoginModal = connector(
 
                 if (keyfile.kty === "RSA") {
                   // Confirm that uploaded file is indeed keyfile
-                  sessionStorage.setItem("keyfile", String(reader.result)) // Set keyfile to sessionStorage
+                  props.setWallet({ wallet: String(reader.result) })
                   //   this.toggleModal() // Close login modal
-                  props.closeLoginModal({})
-                  props.setIsAuthenticated({ isAuthenticated: true })
-                  arweave.wallets
-                    .jwkToAddress(
-                      JSON.parse(String(sessionStorage.getItem("keyfile")))
-                    )
-                    .then(address => window.location.replace(`/#/${address}`))
 
-                  // window.location.reload() // Reload page to get authenticated status
+                  arweave.wallets.jwkToAddress(keyfile).then(address => {
+                    props.loadAddress({ address })
+                    props.setIsAuthenticated({ isAuthenticated: true })
+                    // window.location.replace(`/#/${address}`)
+                    // setTimeout(
+                    //   () => ,
+                    //   10000
+                    // )
+
+                    props.closeLoginModal({})
+                    window.location.reload() // Reload page to get authenticated status
+                  })
                 } else {
                   props.loadKeyFile({ keyFileName: "Error: Not a keyfile" })
                 }

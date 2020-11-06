@@ -4,7 +4,6 @@ import {
   createReducer,
   Reducer
 } from "hard-reducer"
-
 const { createAction } = buildActionCreator({
   prefix: "argit/"
 })
@@ -28,6 +27,10 @@ export const setIsAuthenticated: ActionCreator<{
 export const openLoginModal: ActionCreator<{}> = createAction(
   "open-login-modal"
 )
+export const userLogout: ActionCreator<{}> = createAction("user-logout")
+export const setLastSynced: ActionCreator<{}> = createAction(
+  "update-last-synced"
+)
 
 export const closeLoginModal: ActionCreator<{}> = createAction(
   "close-login-modal"
@@ -46,12 +49,18 @@ export const setRepositoryURL: ActionCreator<{
 }> = createAction("set-repository-url")
 
 export const setRepositoryHead: ActionCreator<{
-  repositoryHead: string
+  repositoryHead: string | null
 }> = createAction("set-repository-head")
 
 export const updateFilterIndex: ActionCreator<{
   filterIndex: number
 }> = createAction("update-filter-index")
+export const loadRefs: ActionCreator<{
+  refs: []
+}> = createAction("load-refs")
+export const updateCurrentRef: ActionCreator<{
+  currentRef: string
+}> = createAction("update-current-ref")
 
 export const loadNotifications: ActionCreator<{
   notifications: Notification[]
@@ -60,6 +69,10 @@ export const loadNotifications: ActionCreator<{
 export const setTxLoading: ActionCreator<{
   loading: boolean
 }> = createAction("set-tx-loading")
+
+export const setPageLoading: ActionCreator<{
+  loading: boolean
+}> = createAction("set-page-loading")
 
 export const loadActivities: ActionCreator<{
   activities: Activity[]
@@ -80,6 +93,9 @@ export const updateMainItems: ActionCreator<{
 export const updatePage: ActionCreator<{
   page: string
 }> = createAction("update-page")
+export const setWallet: ActionCreator<{
+  wallet: string
+}> = createAction("set-wallet")
 
 export type Repository = {
   name: string
@@ -113,6 +129,7 @@ export type ArgitState = {
   repositoryHead: string | null
   notifications: Notification[]
   txLoading: boolean
+  pageLoading: boolean
   activities: Activity[]
   repository: {
     name: string
@@ -122,6 +139,10 @@ export type ArgitState = {
   filterIndex: Number
   mainItems: { repos: {}; activities: {} }
   page: string
+  wallet: string
+  lastSynced: number
+  refs: []
+  currentRef: string
 }
 
 const initialState: ArgitState = {
@@ -135,6 +156,7 @@ const initialState: ArgitState = {
   repositoryHead: null,
   notifications: [],
   txLoading: false,
+  pageLoading: false,
   activities: [],
   repository: {
     name: "",
@@ -143,7 +165,11 @@ const initialState: ArgitState = {
   },
   mainItems: { repos: {}, activities: {} },
   filterIndex: 0,
-  page: "main"
+  page: "main",
+  wallet: "",
+  lastSynced: new Date().getTime(),
+  refs: [],
+  currentRef: "refs/heads/master"
 }
 
 export const reducer: Reducer<ArgitState> = createReducer(initialState)
@@ -192,11 +218,20 @@ export const reducer: Reducer<ArgitState> = createReducer(initialState)
   .case(setTxLoading, (state, payload) => {
     return { ...state, txLoading: payload.loading }
   })
+  .case(setPageLoading, (state, payload) => {
+    return { ...state, pageLoading: payload.loading }
+  })
+  .case(setWallet, (state, payload) => {
+    return { ...state, wallet: payload.wallet }
+  })
   .case(loadActivities, (state, payload) => {
     return { ...state, activities: payload.activities }
   })
   .case(updateRepository, (state, payload) => {
     return { ...state, repository: payload.repository }
+  })
+  .case(setLastSynced, state => {
+    return { ...state, lastSynced: new Date().getTime() }
   })
   .case(updateMainItems, (state, payload) => {
     return {
@@ -214,5 +249,22 @@ export const reducer: Reducer<ArgitState> = createReducer(initialState)
     return {
       ...state,
       page: payload.page
+    }
+  })
+  .case(loadRefs, (state, payload) => {
+    return {
+      ...state,
+      refs: payload.refs
+    }
+  })
+  .case(updateCurrentRef, (state, payload) => {
+    return {
+      ...state,
+      currentRef: payload.currentRef
+    }
+  })
+  .case(userLogout, () => {
+    return {
+      ...initialState
     }
   })

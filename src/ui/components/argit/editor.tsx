@@ -1,14 +1,17 @@
 import path from "path"
 import * as React from "react"
-import AceEditor from "react-ace"
-import "ace-builds/src-noconflict/mode-jsx"
-import "ace-builds/src-noconflict/theme-github"
-import "ace-builds/src-noconflict/theme-monokai"
 import { CardBody } from "reactstrap"
 import { lifecycle } from "recompose"
 import { ReadCommitResult } from "../../../domain/types"
 import { connector } from "../../actionCreators/index"
 import { ThemeToggleButton } from "./themeToggleButton"
+import remark from "remark"
+import remarkReact from "remark-react"
+import { Suspense } from "react"
+import { Loading } from "../argit/Repository/RepositoryStyles"
+const AceEditor = React.lazy(() => import("react-ace"))
+
+const processor = remark().use(remarkReact)
 const languages = [
   "javascript",
   "java",
@@ -24,10 +27,6 @@ const languages = [
   "css"
 ]
 
-languages.forEach(lang => {
-  require(`ace-builds/src-noconflict/mode-${lang}`)
-})
-
 const EXT_TO_ACE_MODE_MAP: any = {
   ".js": "javascript",
   ".java": "java",
@@ -41,7 +40,8 @@ const EXT_TO_ACE_MODE_MAP: any = {
   ".cs": "csharp",
   ".ts": "typescript",
   ".css": "css",
-  ".txt": "text"
+  ".txt": "text",
+  ".yml": "yaml"
 }
 
 export function extToAceMode(filepath: string): string {
@@ -52,23 +52,27 @@ export function extToAceMode(filepath: string): string {
 type EditorProps = {
   value: string
   filepath: string
+  filetype: string
   address: string
   projectRoot: string
   unloadFile: any
   theme: string
   history: ReadCommitResult[]
   head: string
+  pageLoading: bool
 }
 
 export const Editor = connector(
   state => ({
     value: state.buffer.value,
     filepath: state.buffer.filepath,
+    filetype: state.buffer.filetype,
     address: state.argit.address,
     projectRoot: state.project.projectRoot,
     theme: state.config.theme,
     history: state.git.history,
-    head: state.argit.repositoryHead
+    head: state.argit.repositoryHead,
+    pageLoading: state.argit.pageLoading
   }),
   actions => ({
     unloadFile: actions.buffer.unloadFile
@@ -81,30 +85,50 @@ export const Editor = connector(
 )(function EditorImpl(props) {
   if (props.head) {
     if (props.value) {
+      if (props.filetype === "markdown") {
+        const contents = processor.processSync(props.value).contents
+
+        return <div>{contents}</div>
+      }
+
       const mode = extToAceMode(props.filepath)
 
       return (
         <div>
           {props.filepath}
-          <ThemeToggleButton />
-          <AceEditor
-            mode={mode}
-            theme={props.theme}
-            name="ace"
-            value={props.value}
-            readOnly={true}
-            fontSize={14}
-            highlightActiveLine={false}
-            width="100%"
-            showPrintMargin={false}
-            editorProps={{ $blockScrolling: true }}
-          />
+          <Suspense
+            fallback={
+              <>
+                <Loading loading={props.pageLoading ? 1 : 0}>
+                  <i className="fa fa-spinner fa-spin" />
+                </Loading>
+              </>
+            }
+          >
+            <>
+              <ThemeToggleButton />
+              <AceEditor
+                mode={mode}
+                theme={props.theme}
+                name="ace"
+                value={props.value}
+                readOnly={true}
+                fontSize={14}
+                highlightActiveLine={false}
+                width="100%"
+                showPrintMargin={false}
+                editorProps={{ $blockScrolling: true }}
+              />
+            </>
+          </Suspense>
         </div>
       )
     }
-    return null
+
+    return <></>
   }
-  const url = `dgit://${props.match.params.wallet_address}/${
+
+  const url = `gitopia://${props.match.params.wallet_address}/${
     props.match.params.repo_name
   }`
 
@@ -116,7 +140,7 @@ export const Editor = connector(
           Run the following commands in your existing git repository to push
         </p>
         <code className="app-code">
-          export ARWEAVE_WALLET_PATH="PATH_OF_YOUR_ARWEAVE_KEYFILE" <br />
+          export GITOPIA_WALLET_PATH="PATH_OF_YOUR_ARWEAVE_KEYFILE" <br />
           <br />
           git remote add origin {`${url}`} <br />
           <br />

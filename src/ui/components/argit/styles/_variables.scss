@@ -6,9 +6,6 @@ $glyphicons-halflings-include-bonus: false !default;
 $glyphicons-halflings-class-prefix: glyphicon !default;
 $glyphicons-halflings-font-base-size: 14px !default;
 
-$glyphicons-halflings-font-path: "../fonts/glyphicons" !default;
-$fa-font-path: "../fonts/font-awesome" !default;
-
 /*
  * typography
  * ======================================================================== */
@@ -51,7 +48,7 @@ $pink: #e671b8 !default;
 $purple: #a700ae !default;
 $brown: #a05000 !default;
 $teal: #4ebfbb !default;
-$subtle-blue: #474d84 !default;
+$subtle-blue: #4051b5 !default;
 $gray: #595d78 !default;
 $inverse: #30314e !default;
 $violet_deep: #9dc5c3 !default;
@@ -240,7 +237,7 @@ $pagination-active-border: transparent !default;
 $pagination-active-border-color: transparent !default;
 
 $pagination-disabled-color: $gray-700 !default;
-$pagination-disabled-bg: #fff !default;
+$pagination-disabled-bg: #f8f8f9 !default;
 $pagination-disabled-border: transparent !default;
 
 // == Components

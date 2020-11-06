@@ -3,13 +3,21 @@ import { arweave } from "../../../index"
 import Input from "../../../ui/components/utils/input"
 import { Repository as Repo } from "../../../ui/reducers/argit"
 import { closeCreateRepoModal } from "../../reducers/app"
-import { updateRepositories } from "../../reducers/argit"
+import { updateRepositories, updateMainItems } from "../../reducers/argit"
+import { Redirect, withRouter } from "react-router-dom"
+import { loadNotifications, Notification } from "../../reducers/argit"
 
 type NewRepoFormProps = {
   address: string
-  repositories: Repo[]
+  mainItems: {}
+  repositories: []
   closeCreateRepoModal: typeof closeCreateRepoModal
   updateRepositories: typeof updateRepositories
+  updateMainItems: typeof updateMainItems
+  history: any
+  wallet: string
+  loadNotifications: typeof loadNotifications
+  notifications: typeof Notification[]
 }
 
 type NewRepoFormState = {
@@ -17,6 +25,7 @@ type NewRepoFormState = {
   errors: { name: string | null }
   transactionLoading: boolean
   numTokens: string
+  disabled: boolean
 }
 
 class NewRepoForm extends Component<NewRepoFormProps, NewRepoFormState> {
@@ -27,7 +36,8 @@ class NewRepoForm extends Component<NewRepoFormProps, NewRepoFormState> {
     },
     errors: { name: "" },
     transactionLoading: false,
-    numTokens: "0"
+    numTokens: "0",
+    disabled: false
   }
   constructor(props: NewRepoFormProps) {
     super(props)
@@ -62,7 +72,7 @@ class NewRepoForm extends Component<NewRepoFormProps, NewRepoFormState> {
     this.setState({ transactionLoading: true })
 
     const { name, description } = this.state.repo
-    let wallet = JSON.parse(sessionStorage.getItem("keyfile"))
+    let wallet = JSON.parse(this.props.wallet)
     const data = JSON.stringify({
       name: name,
       description: description
@@ -70,12 +80,12 @@ class NewRepoForm extends Component<NewRepoFormProps, NewRepoFormState> {
     console.log(data)
     let tx = await arweave.createTransaction({ data }, wallet)
 
-    tx.addTag("Content-Type", "application/json")
-    tx.addTag("App-Name", "dgit")
-    tx.addTag("version", "0.0.2")
-    tx.addTag("Unix-Time", String(Math.round(new Date().getTime() / 1000))) // Add Unix timestamp
-    tx.addTag("Type", "create-repo")
     tx.addTag("Repo", name)
+    tx.addTag("Version", "0.0.2")
+    tx.addTag("Type", "create-repo")
+    tx.addTag("App-Name", "Gitopia")
+    tx.addTag("Unix-Time", String(Math.round(new Date().getTime() / 1000))) // Add Unix timestamp
+    tx.addTag("Content-Type", "application/json")
 
     await arweave.transactions.sign(tx, wallet) // Sign transaction
     let tx_id = tx.id // Get transaction id from signed transaction
@@ -98,31 +108,65 @@ class NewRepoForm extends Component<NewRepoFormProps, NewRepoFormState> {
     }
 
     await arweave.transactions.post(tx) // Post transaction
-
-    this.setState({ transactionLoading: false }) // Set loading status to false
-    this.props.closeCreateRepoModal({})
-
     console.log(tx)
-    const repository = {
-      name: name,
-      description: description,
-      status: "pending",
-      txid: tx.id
+    try {
+      const data: any = await arweave.transactions.getData(tx.id, {
+        decode: true,
+        string: true
+      })
+      console.error(data)
+    } catch (error) {
+      console.log(error)
     }
-    this.props.updateRepositories({
-      repositories: [...this.props.repositories, repository]
-    })
+    try {
+      const decoded: any = JSON.parse(data)
+      this.setState({ transactionLoading: false }) // Set loading status to false
+      this.props.closeCreateRepoModal({})
+
+      console.log(tx)
+      const repository = {
+        name: decoded.name,
+        type: "create-repo",
+        txid: tx.id
+      }
+      const notification = {
+        txid: tx.id,
+        type: "pending",
+        action: `Create ${decoded.name} Repo`
+      }
+      this.props.loadNotifications({
+        notifications: [...this.props.notifications, notification]
+      })
+      let newRepos = { ...this.props.mainItems.repos }
+      newRepos[name] = repository
+      console.log(newRepos)
+      this.props.updateMainItems({
+        mainItems: {
+          repos: newRepos,
+          activities: this.props.mainItems.activities
+        }
+      })
+      return decoded.name
+    } catch (error) {
+      return Error(error)
+    }
   }
 
   handleSubmit = e => {
-    const { name, description } = this.state.repo
+    this.setState({ disabled: true })
     e.preventDefault()
     const errors = this.validate()
     if (errors) {
       this.setState({ errors: errors })
       return
     }
-    this.arCreate()
+    this.arCreate().then(name => {
+      console.log(name)
+
+      this.props.history.push(`/${this.props.address}/${name}`)
+      this.props.updatePage({ page: "repo" })
+      this.props.updateFilterIndex({ filterIndex: 0 })
+    })
   }
 
   handleChange = ({ currentTarget: input }) => {
@@ -159,11 +203,14 @@ class NewRepoForm extends Component<NewRepoFormProps, NewRepoFormState> {
               name="description"
             />
           </div>
-          <button className="btn btn-primary">Create Repository</button>
+          <button className="btn btn-primary" disabled={this.state.disabled}>
+            Create Repository{" "}
+            {this.state.disabled && <i className="fa fa-spinner fa-spin" />}
+          </button>
         </form>
       </div>
     )
   }
 }
 
-export default NewRepoForm
+export default withRouter(NewRepoForm)

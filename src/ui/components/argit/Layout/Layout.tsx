@@ -14,9 +14,10 @@ import s from "./Layout.module.scss"
 import dlogo from "../../argit/images/dlogo.svg"
 import { Sponsor } from "../Sponsor"
 import { Link } from "react-router-dom"
-import { GoArrowLeft, GoArrowRight } from "react-icons/go"
-import { FaCheckCircle, FaSpinner, FaPlus } from "react-icons/fa"
 import { format } from "date-fns"
+import { filter } from "fuzzaldrin"
+import { CreateRepoModal } from "../../organisms/CreateRepoModal"
+import { Pagination } from "../../argit/Pagination"
 
 import {
   PopoverBody,
@@ -29,9 +30,9 @@ import {
 import { lifecycle } from "recompose"
 import { openCreateRepoModal } from "../../../reducers/app"
 import { arweave } from "../../../../index"
+
 import {
   getAllActivities,
-  txQuery,
   getNextActivities,
   getAllRepositores
 } from "../../../../utils"
@@ -64,9 +65,16 @@ import {
   updateMainItems,
   updatePage,
   updateFilterIndex,
-  Activity
+  Activity,
+  setWallet,
+  userLogout,
+  setLastSynced,
+  loadRefs,
+  updateCurrentRef
 } from "../../../reducers/argit"
-import { FaAward, FaRegFileAlt } from "react-icons/fa"
+import { CreateRepoModal } from "../../organisms/CreateRepoModal"
+import BranchDropdown from "./BranchDropdown"
+import { getAllRefs } from "isomorphic-git/src/utils/arweave"
 
 type ConnectedProps = {
   isAuthenticated: boolean
@@ -88,6 +96,15 @@ type ConnectedProps = {
   updatePage: typeof updatePage
   page: string
   openSponsorModal: typeof openSponsorModal
+  wallet: string
+  setWallet: typeof setWallet
+  address: string
+  userLogout: typeof userLogout
+  setLastSynced: typeof setLastSynced
+  loadRefs: typeof loadRefs
+  updateCurrentRef: typeof updateCurrentRef
+  currentRef: string
+  refs: []
 }
 
 export const Layout = connector(
@@ -103,7 +120,11 @@ export const Layout = connector(
     repository: state.argit.repository,
     page: state.argit.page,
     txLoading: state.argit.txLoading,
-    mainItems: state.argit.mainItems
+    mainItems: state.argit.mainItems,
+    wallet: state.argit.wallet,
+    lastSynced: state.argit.lastSynced,
+    currentRef: state.argit.currentRef,
+    refs: state.argit.refs
   }),
   actions => ({
     openLoginModal: actions.argit.openLoginModal,
@@ -118,65 +139,140 @@ export const Layout = connector(
     loadAddress: actions.argit.loadAddress,
     loadActivities: actions.argit.loadActivities,
     openSponsorModal: actions.argit.openSponsorModal,
-    openCreateRepoModal: actions.app.openCreateRepoModal
+    openCreateRepoModal: actions.app.openCreateRepoModal,
+    setWallet: actions.argit.setWallet,
+    userLogout: actions.argit.userLogout,
+    setLastSynced: actions.argit.setLastSynced,
+    loadRefs: actions.argit.loadRefs,
+    updateCurrentRef: actions.argit.updateCurrentRef
   }),
   lifecycle<ConnectedProps, {}>({
+    async componentDidUpdate(prevProps, prevState) {
+      console.log(this.props.match.params, prevProps.match.params)
+      if (
+        prevProps.match.params.wallet_address !==
+        this.props.match.params.wallet_address
+      ) {
+        this.props.updatePage({ page: "main" })
+
+        this.props.updateFilterIndex({ filterIndex: 0 })
+        console.log("enter")
+        this.props.setTxLoading({ loading: true })
+
+        let address = this.props.match.params.wallet_address
+
+        const repos = await getAllRepositores(arweave, address)
+        this.props.updateRepositories({ repositories: repos })
+        let names: [] = []
+        let objects: {} = {}
+        repos.forEach(item => {
+          let itemname = item.name
+          names.push(item.name)
+          objects[itemname] = item
+        })
+        console.log(objects)
+        this.props.updateMainItems({
+          mainItems: {
+            repos: objects,
+            activities: prevProps.mainItems.activities
+          }
+        })
+        this.props.setTxLoading({ loading: false })
+      }
+      if (
+        prevProps.match.params.repo_name !== this.props.match.params.repo_name
+      ) {
+        this.props.setTxLoading({ loading: true })
+
+        if (this.props.match.params.repo_name) {
+          const refs = await getAllRefs(
+            arweave,
+            `gitopia://${this.props.match.params.wallet_address}/${
+              this.props.match.params.repo_name
+            }`
+          )
+          console.log("refs", refs)
+          this.props.loadRefs({ refs: Object.keys(refs) })
+          if (Object.keys(refs).includes("refs/heads/master")) {
+            this.props.updateCurrentRef({ currentRef: "refs/heads/master" })
+          } else {
+            this.props.updateCurrentRef({ currentRef: Object.keys(refs)[0] })
+          }
+        } else {
+          this.props.loadRefs({ refs: [] })
+          this.props.updateCurrentRef({ currentRef: "refs/heads/" })
+        }
+        this.props.setTxLoading({ loading: false })
+      }
+    },
+
     async componentDidMount() {
+      this.props.setTxLoading({ loading: true })
+
       if (this.props.match.params.repo_name) {
         this.props.updatePage({ page: "repo" })
+        const refs = await getAllRefs(
+          arweave,
+          `gitopia://${this.props.match.params.wallet_address}/${
+            this.props.match.params.repo_name
+          }`
+        )
+        console.log("refs", refs)
+        this.props.loadRefs({ refs: Object.keys(refs) })
+        if (Object.keys(refs).includes("refs/heads/master")) {
+          this.props.updateCurrentRef({ currentRef: "refs/heads/master" })
+        } else {
+          this.props.updateCurrentRef({ currentRef: Object.keys(refs)[0] })
+        }
       } else {
         this.props.updatePage({ page: "main" })
       }
 
-      this.props
-        // UI Boot
-        // await delay(150)
-        .setTxLoading({ loading: true })
       this.props.updateFilterIndex({ filterIndex: 0 })
       const { isAuthenticated, repositories, ...actions } = this.props
       let address = this.props.match.params.wallet_address
 
-      if (isAuthenticated) {
-        address = await arweave.wallets.jwkToAddress(
-          JSON.parse(String(sessionStorage.getItem("keyfile")))
-        )
-      }
-      let user_address = this.props.match.params.wallet_address
-
-      actions.loadAddress({ address })
-      const activities = await getAllActivities(arweave, user_address)
+      const activities = await getAllActivities(arweave, address)
       console.log(activities)
 
       actions.loadActivities({ activities: activities })
       let notifications: Notification[] = []
       let completed_txids: String[] = []
-      const repos = await getAllRepositores(arweave, user_address)
+      const repos = await getAllRepositores(arweave, address)
       console.log(repos)
+      console.log("notif", this.props.notifications)
+      const newNotifications = this.props.notifications.map(notif => {
+        if (
+          notif.type === "pending" &&
+          repos.find(o => o.txid === notif.txid)
+        ) {
+          return {
+            type: "confirmed",
+            action: notif.action,
+            txid: notif.txid
+          }
+        } else {
+          return notif
+        }
+      })
 
-      const newNotifications = this.props.notifications
-        .filter(
-          notif =>
-            notif.type == "pending" && completed_txids.includes(notif.txid)
-        )
-        .map(notif => ({
-          type: "confirmed",
-          action: "Create Repo",
-          txid: notif.txid
-        }))
-      let finalNotifications = [...notifications, ...newNotifications]
+      let finalNotifications = [...newNotifications]
+      this.props.setLastSynced({})
       actions.loadNotifications({ notifications: finalNotifications })
+
       actions.updateRepositories({ repositories: repos })
-      // let names: string[] = []
-      // let objects: {} = {}
-      // this.props.repositories.forEach(item => {
-      //   let itemname = item.name
-      //   names.push(item.name)
-      //   objects[itemname] = item
-      // })
-      // console.log(objects)
+      let names: [] = []
+      let objects: {} = {}
+      this.props.repositories.forEach(item => {
+        let itemname = item.name
+        names.push(item.name)
+        objects[itemname] = item
+      })
+
+      console.log(objects)
       actions.updateMainItems({
         mainItems: {
-          repos: repos,
+          repos: objects,
           activities: this.props.mainItems.activities
         }
       })
@@ -186,6 +282,8 @@ export const Layout = connector(
 )(function LayoutImpl(props) {
   function handlePage(e: string) {
     let objects = {}
+    props.setTxLoading({ loading: true })
+
     getNextActivities(arweave, props.address, props.activities[9].cursor, e)
       .then(activities => {
         console.log(activities)
@@ -205,18 +303,31 @@ export const Layout = connector(
         props.setTxLoading({ loading: false })
       })
   }
-  function handleChange(e: string) {
-    let names: string[] = []
+  function handleChange(e) {
+    props.setTxLoading({ loading: true })
+    let names: [] = []
     let objects: {} = {}
+    let filteredObjects: {} = {}
+    console.log(e.target.value)
     props.repositories.forEach(item => {
       let itemname = item.name
-      names.push(item.name)
+      names.push(itemname)
       objects[itemname] = item
     })
     const results = filter(names, e.target.value)
-    props.updateMainItems({
-      mainItems: { repos: objects, activities: {} }
+
+    console.log(results, names)
+    results.forEach(result => {
+      filteredObjects[result] = objects[result]
     })
+    console.log(filteredObjects)
+    props.updateMainItems({
+      mainItems: {
+        repos: filteredObjects,
+        activities: props.mainItems.activities
+      }
+    })
+    props.setTxLoading({ loading: false })
   }
   let mainFilters = [
     { state: "repos", label: "Repositories", active: true },
@@ -286,8 +397,12 @@ export const Layout = connector(
             setIsAuthenticated={props.setIsAuthenticated}
             updateRepositories={props.updateRepositories}
             updateNotifications={props.loadNotifications}
+            userLogout={props.userLogout}
             notifications={props.notifications}
             address={props.address}
+            setWallet={props.setWallet}
+            lastSynced={props.lastSynced}
+            setLastSynced={props.setLastSynced}
           />
         )}
         {!props.isAuthenticated && (
@@ -346,21 +461,21 @@ export const Layout = connector(
                           props.updateFilterIndex({ filterIndex: 0 })
                         }}
                       >
-                        <GoArrowLeft /> Back to Repositories
+                        <i className="fa fa-arrow-left" /> Back to Repositories
                       </Link>
                     )}
                   </div>
                   <OwnerProfile>
                     <a
-                      href={`/${props.address}`}
+                      href={`/${props.match.params.wallet_address}`}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
                       <img
-                        src={`https://api.adorable.io/avatars/100/${
-                          props.address
-                        }.png`}
-                        alt={`${props.address}`}
+                        src={`https://avatars.dicebear.com/api/bottts/${
+                          props.match.params.wallet_address
+                        }.svg?h=100&r=5&m=5`}
+                        alt={`${props.match.params.wallet_address}`}
                       />
                     </a>
                     {props.page === "repo" && (
@@ -408,20 +523,20 @@ export const Layout = connector(
                           props.openSponsorModal({})
                         }}
                       >
-                        <FaAward />
+                        <i className="fa fa-trophy" />
                         Sponsor
                       </span>
                       {props.page === "repo" && (
                         <span id="clone_button" className="rv-button">
-                          <FaRegFileAlt /> Clone
+                          <i className="fa fa-file-text-o" /> Clone
                           <UncontrolledPopover
                             className="rv-pop"
                             placement="top-end"
                             trigger="legacy"
                             target="clone_button"
                           >
-                            <PopoverHeader>Clone with dgit</PopoverHeader>
-                            <PopoverBody>{`dgit://${
+                            <PopoverHeader>Clone from Gitopia</PopoverHeader>
+                            <PopoverBody>{`gitopia://${
                               props.repository.owner.name
                             }/${props.repository.name}`}</PopoverBody>
                           </UncontrolledPopover>
@@ -453,7 +568,6 @@ export const Layout = connector(
                         </button>
                       ))}
                   </FilterList>
-
                   {props.filterIndex === 0 &&
                     props.page === "main" && (
                       <Form>
@@ -470,7 +584,11 @@ export const Layout = connector(
                                 props.openCreateRepoModal({})
                               }}
                             >
-                              <FaPlus color="#fff" size={14} />
+                              <i
+                                className="fa fa-plus"
+                                color="#fff"
+                                size={14}
+                              />
                             </SubmitButton>
                           )}
                       </Form>
@@ -478,41 +596,20 @@ export const Layout = connector(
                   {props.txLoading ? (
                     <>
                       <Loading loading={props.txLoading ? 1 : 0}>
-                        <FaSpinner />
+                        <i className="fa fa-spinner fa-spin" />
                       </Loading>
                     </>
                   ) : (
                     <List>
                       {props.page === "main" &&
                         props.filterIndex == 0 &&
-                        props.repositories &&
-                        props.repositories.map(repo => (
-                          <li key={repo.name}>
-                            <div>
-                              {repo.name && (
-                                <Link
-                                  to={`/${props.address}/${repo.name}`}
-                                  onClick={() => {
-                                    props.updatePage({ page: "repo" })
-                                  }}
-                                >
-                                  <img
-                                    src={`https://api.adorable.io/avatars/100/${
-                                      repo.name
-                                    }.png`}
-                                    alt={repo.name}
-                                  />
-                                  <span>{repo.name}</span>
-                                </Link>
-                              )}
-                            </div>
-                            {repo.name && (
-                              <button>
-                                <FaCheckCircle />
-                              </button>
-                            )}
-                          </li>
-                        ))}
+                        props.repositories && (
+                          <Pagination
+                            allObjs={props.mainItems.repos}
+                            {...props}
+                          />
+                        )}
+
                       {props.page === "main" &&
                         props.filterIndex == 1 &&
                         props.activities &&
@@ -565,35 +662,51 @@ export const Layout = connector(
                         ))}
                     </List>
                   )}
+
+                  {props.page === "repo" &&
+                    props.refs &&
+                    !props.txLoading && (
+                      <div className="drop-br">
+                        <BranchDropdown
+                          refs={props.refs}
+                          updateCurrentRef={props.updateCurrentRef}
+                          currentRef={props.currentRef}
+                        />
+                      </div>
+                    )}
                   {props.page === "repo" &&
                     props.filterIndex === 0 && <StackRouter {...props} />}
                   {props.page === "repo" &&
                     props.filterIndex === 1 && <Commits {...props} />}
-                  <PageNav>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        props.setTxLoading({ loading: true })
-                        handlePage("back")
-                      }}
-                    >
-                      Newer
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        props.setTxLoading({ loading: true })
-                        handlePage("next")
-                      }}
-                    >
-                      Older
-                    </button>
-                  </PageNav>
+                  {props.page === "main" &&
+                    props.filterIndex === 1 && (
+                      <PageNav>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            props.setTxLoading({ loading: true })
+                            handlePage("back")
+                          }}
+                        >
+                          Newer
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            props.setTxLoading({ loading: true })
+                            handlePage("next")
+                          }}
+                        >
+                          Older
+                        </button>
+                      </PageNav>
+                    )}
                 </IssueList>
               </NewContainer>
             </CSSTransition>
           </TransitionGroup>
-          <Sponsor match={props.match} />
+          <Sponsor match={props.match} wallet={props.wallet} />
+          <CreateRepoModal {...props} wallet={props.wallet} />
         </main>
       </Hammer>
       <footer className="landing-footer">
@@ -601,7 +714,7 @@ export const Layout = connector(
         &nbsp; by{" "}
         <span className="font-bold">
           <a
-            href="https://thechtrap.com/"
+            href="https://thetechtrap.com/"
             target="_blank"
             className="landing-a landing-link link--dark"
           >
